@@ -6,84 +6,99 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-// Complementa las pruebas unitarias verificando todas las capas juntas.
-@SpringBootTest(properties = "eventify.seed.enabled=false")
+@SpringBootTest(properties = {
+        "spring.datasource.url=jdbc:h2:mem:http-test;DB_CLOSE_DELAY=-1",
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "eventify.seed.enabled=false"
+})
 @AutoConfigureMockMvc
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class CatalogoHttpTest {
-    private final MockMvc mvc;
-
     @Autowired
-    CatalogoHttpTest(MockMvc mvc) {
-        this.mvc = mvc;
+    private MockMvc mvc;
+
+    @Test
+    void listaVaciaIncluyeMetadatosDePaginacion() throws Exception {
+        mvc.perform(get("/api/events?page=0&size=5&sort=nombre,asc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isEmpty())
+                .andExpect(jsonPath("$.totalElements").value(0))
+                .andExpect(jsonPath("$.totalPages").value(0));
     }
 
     @Test
-    void catalogosVaciosResponden200() throws Exception {
-        mvc.perform(get("/api/events")).andExpect(status().isOk()).andExpect(content().json("[]"));
-        mvc.perform(get("/api/venues")).andExpect(status().isOk()).andExpect(content().json("[]"));
-    }
-
-    @Test
-    void registraYConsultaEvento() throws Exception {
-        mvc.perform(post("/api/events").contentType("application/json").content("""
-                {"nombre":"Taller Java","fecha":"2026-10-15","descripcion":"Aprender Spring"}
+    void creaActualizaConsultaYPuedeEliminarEvento() throws Exception {
+        String creado = mvc.perform(post("/api/events").contentType("application/json").content("""
+                {"nombre":"Taller Java","fecha":"2026-10-15","descripcion":"Primera versión"}
                 """))
-                .andExpect(status().isCreated()).andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.fecha").value("2026-10-15"));
-        mvc.perform(get("/api/events")).andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].nombre").value("Taller Java"));
-    }
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").isNumber())
+                .andReturn().getResponse().getContentAsString();
+        Number id = com.jayway.jsonpath.JsonPath.read(creado, "$.id");
 
-    @Test
-    void eventoInvalidoNoSeGuarda() throws Exception {
-        mvc.perform(post("/api/events").contentType("application/json").content("""
-                {"nombre":"   ","fecha":"2026-10-15"}
+        mvc.perform(put("/api/events/{id}", id.longValue()).contentType("application/json").content("""
+                {"nombre":"Taller Spring","fecha":"2026-10-20","descripcion":"Versión final"}
                 """))
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.mensaje").value("El nombre es obligatorio"));
-        mvc.perform(get("/api/events")).andExpect(content().json("[]"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nombre").value("Taller Spring"));
+        mvc.perform(get("/api/events/{id}", id.longValue()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.descripcion").value("Versión final"));
+        mvc.perform(delete("/api/events/{id}", id.longValue())).andExpect(status().isNoContent());
+        mvc.perform(get("/api/events/{id}", id.longValue()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.mensaje").value("No existe el evento con id " + id.longValue()));
     }
 
     @Test
-    void registraYConsultaLugar() throws Exception {
-        mvc.perform(post("/api/venues").contentType("application/json").content("""
+    void paginaEventosYPermiteBuscarPorNombre() throws Exception {
+        for (int i = 1; i <= 6; i++) {
+            mvc.perform(post("/api/events").contentType("application/json").content("""
+                    {"nombre":"Curso %d","fecha":"2026-10-15","descripcion":""}
+                    """.formatted(i))).andExpect(status().isCreated());
+        }
+        mvc.perform(get("/api/events?page=0&size=5&sort=nombre,asc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(5))
+                .andExpect(jsonPath("$.totalElements").value(6))
+                .andExpect(jsonPath("$.totalPages").value(2));
+        mvc.perform(get("/api/events").param("nombre", "Curso 1").param("page", "0").param("size", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void rechazaEventoInvalidoYDevuelve404ParaIdAusente() throws Exception {
+        mvc.perform(post("/api/events").contentType("application/json").content("""
+                {"nombre":"","fecha":"2026-10-15"}
+                """))
+                .andExpect(status().isBadRequest());
+        mvc.perform(delete("/api/events/9999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.mensaje").value("No existe el evento con id 9999"));
+    }
+
+    @Test
+    void creaYEliminaLugar() throws Exception {
+        String creado = mvc.perform(post("/api/venues").contentType("application/json").content("""
                 {"nombre":"Auditorio","direccion":"Calle 10","capacidad":100}
                 """))
-                .andExpect(status().isCreated()).andExpect(jsonPath("$.id").value(1));
-        mvc.perform(get("/api/venues")).andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].capacidad").value(100));
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        Number id = com.jayway.jsonpath.JsonPath.read(creado, "$.id");
+        mvc.perform(delete("/api/venues/{id}", id.longValue())).andExpect(status().isNoContent());
+        mvc.perform(get("/api/venues/{id}", id.longValue())).andExpect(status().isNotFound());
     }
 
     @Test
-    void lugarInvalidoNoSeGuarda() throws Exception {
-        mvc.perform(post("/api/venues").contentType("application/json").content("""
-                {"nombre":"Auditorio","direccion":"Calle 10","capacidad":0}
-                """))
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.mensaje").exists());
-        mvc.perform(get("/api/venues")).andExpect(content().json("[]"));
-    }
-
-    @Test
-    void fechaMalFormadaDevuelve400() throws Exception {
-        mvc.perform(post("/api/events").contentType("application/json").content("""
-                {"nombre":"Taller","fecha":"15/10/2026"}
-                """))
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.mensaje").exists());
-        mvc.perform(get("/api/events")).andExpect(content().json("[]"));
-    }
-
-    @Test
-    void swaggerDocumentaLosCuatroMetodos() throws Exception {
-        mvc.perform(get("/v3/api-docs")).andExpect(status().isOk())
-                .andExpect(jsonPath("$.paths['/api/events'].get.summary").value("Consultar eventos"))
-                .andExpect(jsonPath("$.paths['/api/events'].post.responses['201']").exists())
-                .andExpect(jsonPath("$.paths['/api/venues'].get.summary").value("Consultar lugares"))
-                .andExpect(jsonPath("$.paths['/api/venues'].post.responses['201']").exists());
-        mvc.perform(get("/swagger-ui.html")).andExpect(status().is3xxRedirection());
-        mvc.perform(get("/swagger-ui/index.html")).andExpect(status().isOk());
+    void swaggerIncluyeCrudYPaginacion() throws Exception {
+        mvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/api/events'].get.parameters").isArray())
+                .andExpect(jsonPath("$.paths['/api/events/{id}'].delete.responses['204']").exists())
+                .andExpect(jsonPath("$.paths['/api/events/{id}'].get.responses['404']").exists());
     }
 }

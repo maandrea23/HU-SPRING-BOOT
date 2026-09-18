@@ -5,24 +5,24 @@ import com.example.productoapi.service.VenueService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import static org.junit.jupiter.api.Assertions.*;
+import org.springframework.data.domain.Pageable;
 
-@SpringBootTest(properties = "eventify.seed.enabled=true")
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+@SpringBootTest(properties = {
+        "spring.datasource.url=jdbc:h2:mem:seed-test;DB_CLOSE_DELAY=-1",
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "eventify.seed.enabled=true"
+})
 class SeedConfigTest {
-    private final EventService events;
-    private final VenueService venues;
-
     @Autowired
-    SeedConfigTest(EventService events, VenueService venues) {
-        this.events = events;
-        this.venues = venues;
-    }
+    private EventService events;
+    @Autowired
+    private VenueService venues;
 
     @Test
-    void cargaDatosAlArrancar() {
-        assertEquals(1, events.listar().size());
-        assertEquals(1, venues.listar().size());
-        assertNotNull(events.listar().get(0).getId());
-        assertNotNull(venues.listar().get(0).getId());
+    void cargaLosDatosInicialesUnaSolaVez() {
+        assertEquals(1, events.listar(null, Pageable.unpaged()).getTotalElements());
+        assertEquals(1, venues.listar(null, Pageable.unpaged()).getTotalElements());
     }
 }

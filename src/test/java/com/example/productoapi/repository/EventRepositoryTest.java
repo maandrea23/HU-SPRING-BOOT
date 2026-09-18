@@ -2,39 +2,42 @@ package com.example.productoapi.repository;
 
 import com.example.productoapi.model.Event;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.PageRequest;
+
 import java.time.LocalDate;
-import static org.junit.jupiter.api.Assertions.*;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+@DataJpaTest
 class EventRepositoryTest {
+    @Autowired
+    private EventRepository repository;
+
     @Test
-    void comienzaVacio() {
-        assertTrue(new EventRepository().listar().isEmpty());
+    void guardaYBuscaPorParteDelNombre() {
+        repository.save(new Event(null, "Taller Java", LocalDate.of(2026, 10, 15), "A"));
+        repository.save(new Event(null, "Concierto", LocalDate.of(2026, 10, 20), "B"));
+
+        var pagina = repository.findByNombreContaining("Taller", PageRequest.of(0, 5));
+
+        assertEquals(1, pagina.getTotalElements());
+        assertEquals("Taller Java", pagina.getContent().get(0).getNombre());
     }
 
     @Test
-    void generaIdsYConservaLosRegistros() {
-        EventRepository repository = new EventRepository();
-        Event entrada = new Event(null, "Taller Java", LocalDate.of(2026, 10, 15), "Primer taller");
-        entrada.setId(99L);
-        Event primero = repository.guardar(entrada);
-        Event segundo = repository.guardar(entrada);
+    void paginaLosRegistros() {
+        for (int i = 1; i <= 6; i++) {
+            repository.save(new Event(null, "Evento " + i, LocalDate.of(2026, 10, i), ""));
+        }
 
-        assertEquals(1L, primero.getId());
-        assertEquals(2L, segundo.getId());
-        assertEquals(2, repository.listar().size());
-        assertEquals(primero, repository.listar().get(0));
-    }
+        var pagina = repository.findAll(PageRequest.of(0, 5));
 
-    @Test
-    void protegeLosDatosDeCambiosExternos() {
-        EventRepository repository = new EventRepository();
-        Event entrada = new Event(null, "Taller Java", LocalDate.of(2026, 10, 15), "Primer taller");
-        String nombreOriginal = entrada.getNombre();
-        Event guardado = repository.guardar(entrada);
-        entrada.setNombre("Cambio externo");
-        guardado.setNombre("Otro cambio");
-        repository.listar().get(0).setNombre("Cambio desde listado");
-        repository.listar().clear();
-        assertEquals(nombreOriginal, repository.listar().get(0).getNombre());
+        assertEquals(5, pagina.getNumberOfElements());
+        assertEquals(6, pagina.getTotalElements());
+        assertEquals(2, pagina.getTotalPages());
+        assertTrue(pagina.hasNext());
     }
 }

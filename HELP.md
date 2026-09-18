@@ -1,6 +1,6 @@
-# Eventify — Semana 1
+# Eventify — Semanas 1 y 2
 
-API de eventos y lugares con datos en memoria. Este proyecto adapta la base ya
+API de eventos y lugares con datos persistentes. Este proyecto adapta la base ya
 creada con Spring Initializr; conserva el paquete `com.example.productoapi` y la
 clase `ProductoApiApplication` para que puedas seguir usando tu configuración del IDE.
 
@@ -11,6 +11,8 @@ Abre `pom.xml`: es la lista de herramientas que Maven descarga para tu proyecto.
 | Dependencia | Para qué la usamos |
 | --- | --- |
 | `spring-boot-starter-web` | Spring MVC, conversión JSON y servidor Tomcat |
+| `spring-boot-starter-data-jpa` | JPA, Hibernate y repositorios para guardar en tablas |
+| `h2` | Base de datos local persistente en `./data/eventify` |
 | `lombok` | Generar getters, setters y constructores de los modelos |
 | `springdoc-openapi-starter-webmvc-ui` | Documentar y probar la API con Swagger |
 | `spring-boot-starter-test` | JUnit 5, Mockito y MockMvc; solo durante las pruebas |
@@ -62,21 +64,22 @@ Lombok genera código al compilar:
 - `@NoArgsConstructor`: constructor sin argumentos.
 - `@AllArgsConstructor`: constructor con todos los atributos, en orden.
 
-No son entidades JPA: aún no existe una base de datos.
+En la semana 2, `@Entity` indica que cada objeto se guarda en una tabla. `@Table`
+define los nombres `events` y `venues`. `@Id` identifica cada fila y
+`@GeneratedValue` permite que H2 genere el ID. `@Column(nullable = false)` convierte
+las reglas importantes en restricciones de la tabla.
 
 ## 4. Entiende el repositorio
 
-Abre `repository/EventRepository.java`.
-`@Repository` permite que Spring cree y administre este objeto.
-Su `Map` usa el identificador como clave y el evento como valor.
+Abre `repository/EventRepository.java`. Esta interfaz hereda `JpaRepository`.
+Spring Data crea su implementación automáticamente: ofrece `save`, `findById`,
+`findAll`, `delete` y paginación sin que escribamos SQL.
 
-`guardar()` genera un ID nuevo y `listar()` devuelve los registros.
-Aunque el cliente envíe un ID, el servidor genera el suyo.
-`LinkedHashMap` mantiene el orden de registro. `synchronized` evita que dos
-peticiones modifiquen simultáneamente el contador o el mapa.
-Se devuelven copias para proteger los objetos almacenados de cambios externos.
+`findByNombreContaining` es una consulta derivada: Spring lee su nombre y genera
+una consulta que encuentra los nombres que contienen el texto indicado.
 
-Al detener o reiniciar la aplicación se pierden los registros.
+H2 almacena el catálogo en `data/eventify.mv.db`. Ese archivo no se versiona con
+Git y los datos se conservan cuando detienes y vuelves a iniciar la aplicación.
 
 ## 5. Entiende el servicio y la inyección por constructor
 
@@ -118,10 +121,14 @@ Abre `controller/EventController.java`:
 
 | Método | Ruta | Respuesta correcta |
 | --- | --- | --- |
-| GET | `/api/events` | 200 y lista de eventos |
+| GET | `/api/events?page=0&size=10&sort=nombre,asc` | 200 y página de eventos |
 | POST | `/api/events` | 201 y evento creado |
-| GET | `/api/venues` | 200 y lista de lugares |
+| GET | `/api/events/{id}` | 200, o 404 si no existe |
+| PUT | `/api/events/{id}` | 200 y evento actualizado |
+| DELETE | `/api/events/{id}` | 204, o 404 si no existe |
+| GET | `/api/venues?page=0&size=10&sort=nombre,asc` | 200 y página de lugares |
 | POST | `/api/venues` | 201 y lugar creado |
+| GET, PUT, DELETE | `/api/venues/{id}` | 200/204, o 404 si no existe |
 
 El servicio lanza `DatosInvalidosException` cuando los datos no cumplen las reglas.
 `ApiExceptionHandler`, anotado con `@RestControllerAdvice`, transforma ese error
@@ -189,8 +196,42 @@ Repite el POST de eventos con `"nombre": "   "`. Espera **400**:
 ```
 
 Comprueba con GET que la cantidad de registros no aumentó.
-Para el catálogo vacío, desactiva el seeder, reinicia y ejecuta ambos GET:
-deben devolver **200** y `[]` antes de hacer cualquier POST.
+Un GET de la semana 2 devuelve una página. Por ejemplo, un catálogo vacío responde:
+
+```json
+{
+  "content": [],
+  "totalElements": 0,
+  "totalPages": 0
+}
+```
+
+Prueba la paginación con:
+
+```text
+GET http://localhost:8080/api/events?page=0&size=5&sort=nombre,asc
+```
+
+Para buscar por una parte del nombre añade `nombre`, por ejemplo:
+
+```text
+GET http://localhost:8080/api/events?nombre=Spring&page=0&size=5
+```
+
+Para actualizar en Postman, usa `PUT http://localhost:8080/api/events/1`, selecciona
+**Body → raw → JSON** y envía el objeto completo, sin necesidad de incluir `id`:
+
+```json
+{
+  "nombre": "Taller Spring Boot actualizado",
+  "fecha": "2026-10-21",
+  "descripcion": "Nueva información"
+}
+```
+
+Para eliminar usa `DELETE http://localhost:8080/api/events/1`. Una eliminación
+correcta responde **204 No Content**, por eso no tiene cuerpo de respuesta. Si el
+ID no existe, los tres métodos por ID responden **404** con un `mensaje` claro.
 
 ## 9. Lee y ejecuta las pruebas
 
@@ -209,10 +250,10 @@ Las pruebas de servicios usan JUnit 5 y Mockito **sin iniciar Spring**:
 `verifyNoInteractions(repository)` demuestra que un registro inválido nunca llega al repositorio.
 Las pruebas cubren nombre nulo, vacío o con espacios, campos obligatorios y listado vacío.
 
-Las pruebas de repositorios verifican los IDs, almacenamiento y protección de copias.
-`CatalogoHttpTest` complementa esas pruebas: arranca el contexto de Spring y usa
-MockMvc para comprobar los estados 200/201/400, la documentación y el seeder desactivado.
-`SeedConfigTest` comprueba la carga inicial activada.
+Las pruebas de repositorios usan `@DataJpaTest`: arrancan solamente la capa JPA
+con una H2 temporal y comprueban el guardado, la consulta derivada y las páginas.
+`CatalogoHttpTest` verifica el CRUD, 200/201/204/400/404, paginación y Swagger.
+Las pruebas nunca escriben en `data/eventify`.
 
 ## Orden sugerido para estudiar
 

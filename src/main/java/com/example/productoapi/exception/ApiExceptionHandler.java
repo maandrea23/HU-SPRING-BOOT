@@ -13,6 +13,11 @@ public class ApiExceptionHandler {
         return ResponseEntity.badRequest().body(Map.of("mensaje", exception.getMessage()));
     }
 
+    @ExceptionHandler(RecursoNoEncontradoException.class)
+    public ResponseEntity<Map<String, String>> recursoNoEncontrado(RecursoNoEncontradoException exception) {
+        return ResponseEntity.status(404).body(Map.of("mensaje", exception.getMessage()));
+    }
+
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Map<String, String>> jsonInvalido(HttpMessageNotReadableException exception) {
         return ResponseEntity.badRequest().body(Map.of("mensaje",

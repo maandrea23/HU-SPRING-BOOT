@@ -2,39 +2,25 @@ package com.example.productoapi.repository;
 
 import com.example.productoapi.model.Venue;
 import org.junit.jupiter.api.Test;
-import java.time.LocalDate;
-import static org.junit.jupiter.api.Assertions.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.PageRequest;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+@DataJpaTest
 class VenueRepositoryTest {
-    @Test
-    void comienzaVacio() {
-        assertTrue(new VenueRepository().listar().isEmpty());
-    }
+    @Autowired
+    private VenueRepository repository;
 
     @Test
-    void generaIdsYConservaLosRegistros() {
-        VenueRepository repository = new VenueRepository();
-        Venue entrada = new Venue(null, "Auditorio", "Calle 10", 100);
-        entrada.setId(99L);
-        Venue primero = repository.guardar(entrada);
-        Venue segundo = repository.guardar(entrada);
+    void guardaYBuscaPorParteDelNombre() {
+        repository.save(new Venue(null, "Auditorio Central", "Calle 10", 200));
+        repository.save(new Venue(null, "Teatro", "Carrera 7", 500));
 
-        assertEquals(1L, primero.getId());
-        assertEquals(2L, segundo.getId());
-        assertEquals(2, repository.listar().size());
-        assertEquals(primero, repository.listar().get(0));
-    }
+        var pagina = repository.findByNombreContaining("Auditorio", PageRequest.of(0, 5));
 
-    @Test
-    void protegeLosDatosDeCambiosExternos() {
-        VenueRepository repository = new VenueRepository();
-        Venue entrada = new Venue(null, "Auditorio", "Calle 10", 100);
-        String nombreOriginal = entrada.getNombre();
-        Venue guardado = repository.guardar(entrada);
-        entrada.setNombre("Cambio externo");
-        guardado.setNombre("Otro cambio");
-        repository.listar().get(0).setNombre("Cambio desde listado");
-        repository.listar().clear();
-        assertEquals(nombreOriginal, repository.listar().get(0).getNombre());
+        assertEquals(1, pagina.getTotalElements());
+        assertEquals("Auditorio Central", pagina.getContent().get(0).getNombre());
     }
 }

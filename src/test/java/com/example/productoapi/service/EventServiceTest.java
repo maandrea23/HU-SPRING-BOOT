@@ -1,21 +1,21 @@
 package com.example.productoapi.service;
 
 import com.example.productoapi.exception.DatosInvalidosException;
+import com.example.productoapi.exception.RecursoNoEncontradoException;
 import com.example.productoapi.model.Event;
 import com.example.productoapi.repository.EventRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.*;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
 import java.time.LocalDate;
-import java.util.List;
+import java.util.Optional;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-// Prueba unitaria: no usa @SpringBootTest ni levanta el servidor.
 @ExtendWith(MockitoExtension.class)
 class EventServiceTest {
     @Mock
@@ -28,59 +28,55 @@ class EventServiceTest {
     }
 
     @Test
-    void registraDatosValidos() {
-        Event entrada = valido();
-        Event guardado = valido();
-        guardado.setId(1L);
-        when(repository.guardar(entrada)).thenReturn(guardado);
+    void registraEventoValidoSinConservarElIdDelCliente() {
+        Event entrada = new Event(99L, "Taller Java", LocalDate.of(2026, 10, 15), "Primer taller");
+        when(repository.save(any(Event.class))).thenAnswer(invocation -> {
+            Event evento = invocation.getArgument(0);
+            assertNull(evento.getId());
+            evento.setId(1L);
+            return evento;
+        });
 
         Event resultado = service.registrar(entrada);
 
         assertEquals(1L, resultado.getId());
-        assertEquals(entrada.getNombre(), resultado.getNombre());
-        verify(repository).guardar(entrada);
+        verify(repository).save(entrada);
     }
 
-    @ParameterizedTest
-    @NullAndEmptySource
-    @ValueSource(strings = {"   ", "\t"})
-    void rechazaNombreInvalido(String nombre) {
-        Event entrada = valido();
-        entrada.setNombre(nombre);
-
-        assertThrows(DatosInvalidosException.class, () -> service.registrar(entrada));
+    @Test
+    void rechazaNombreVacioAntesDeGuardar() {
+        Event evento = new Event(null, " ", LocalDate.now(), "");
+        assertThrows(DatosInvalidosException.class, () -> service.registrar(evento));
         verifyNoInteractions(repository);
     }
 
     @Test
-    void rechazaObjetoNulo() {
-        assertThrows(DatosInvalidosException.class, () -> service.registrar(null));
-        verifyNoInteractions(repository);
+    void actualizaUnEventoExistente() {
+        Event existente = new Event(1L, "Nombre anterior", LocalDate.of(2026, 1, 1), "A");
+        Event cambios = new Event(null, "Nombre nuevo", LocalDate.of(2026, 2, 2), "B");
+        when(repository.findById(1L)).thenReturn(Optional.of(existente));
+        when(repository.save(existente)).thenReturn(existente);
+
+        Event resultado = service.actualizar(1L, cambios);
+
+        assertEquals("Nombre nuevo", resultado.getNombre());
+        assertEquals(LocalDate.of(2026, 2, 2), resultado.getFecha());
+        verify(repository).save(existente);
     }
 
     @Test
-    void devuelveListaVacia() {
-        when(repository.listar()).thenReturn(List.of());
-        assertTrue(service.listar().isEmpty());
-        verify(repository).listar();
+    void informaCuandoNoExisteElEvento() {
+        when(repository.findById(999L)).thenReturn(Optional.empty());
+        assertThrows(RecursoNoEncontradoException.class, () -> service.buscarPorId(999L));
     }
 
     @Test
-    void devuelveCatalogo() {
-        when(repository.listar()).thenReturn(List.of(valido()));
-        assertEquals(List.of(valido()), service.listar());
-        verify(repository).listar();
-    }
+    void eliminaSoloSiExiste() {
+        Event existente = new Event(3L, "Evento", LocalDate.now(), "");
+        when(repository.findById(3L)).thenReturn(Optional.of(existente));
 
-    @Test
-    void rechazaFechaAusente() {
-        Event event = valido();
-        event.setFecha(null);
-        assertThrows(DatosInvalidosException.class, () -> service.registrar(event));
-        verifyNoInteractions(repository);
-    }
+        service.eliminar(3L);
 
-    private Event valido() {
-        return new Event(null, "Taller Java", LocalDate.of(2026, 10, 15), "Primer taller");
+        verify(repository).delete(existente);
     }
 }

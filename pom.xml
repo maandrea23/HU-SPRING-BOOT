@@ -12,7 +12,7 @@
     <artifactId>producto-API</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>Eventify</name>
-    <description>Eventify - Catalogo en memoria, semana 1</description>
+    <description>Eventify - Catálogo persistente, semana 2</description>
     <url/>
     <licenses>
         <license/>
@@ -34,6 +34,17 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <!-- JPA y Hibernate: mapean objetos Java a tablas de base de datos. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <!-- Base de datos relacional local, almacenada en un archivo. -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
         </dependency>
         <!-- Genera getters, setters y constructores de los modelos. -->
         <dependency>

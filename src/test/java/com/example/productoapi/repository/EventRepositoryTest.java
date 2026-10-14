@@ -1,6 +1,7 @@
 package com.example.productoapi.repository;
 
 import com.example.productoapi.model.Event;
+import com.example.productoapi.model.Venue;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -11,15 +12,18 @@ import java.time.LocalDate;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@DataJpaTest
+@DataJpaTest(properties = {"spring.flyway.enabled=false", "spring.jpa.hibernate.ddl-auto=create-drop"})
 class EventRepositoryTest {
     @Autowired
     private EventRepository repository;
+    @Autowired
+    private VenueRepository venueRepository;
 
     @Test
     void guardaYBuscaPorParteDelNombre() {
-        repository.save(new Event(null, "Taller Java", LocalDate.of(2026, 10, 15), "A"));
-        repository.save(new Event(null, "Concierto", LocalDate.of(2026, 10, 20), "B"));
+        Venue venue = venueRepository.save(new Venue(null, "Auditorio", "Calle 10", 200, "Bogotá"));
+        repository.save(evento("Taller Java", LocalDate.of(2026, 10, 15), venue));
+        repository.save(evento("Concierto", LocalDate.of(2026, 10, 20), venue));
 
         var pagina = repository.findByNombreContaining("Taller", PageRequest.of(0, 5));
 
@@ -29,8 +33,9 @@ class EventRepositoryTest {
 
     @Test
     void paginaLosRegistros() {
+        Venue venue = venueRepository.save(new Venue(null, "Auditorio", "Calle 10", 200, "Bogotá"));
         for (int i = 1; i <= 6; i++) {
-            repository.save(new Event(null, "Evento " + i, LocalDate.of(2026, 10, i), ""));
+            repository.save(evento("Evento " + i, LocalDate.of(2026, 10, i), venue));
         }
 
         var pagina = repository.findAll(PageRequest.of(0, 5));
@@ -39,5 +44,11 @@ class EventRepositoryTest {
         assertEquals(6, pagina.getTotalElements());
         assertEquals(2, pagina.getTotalPages());
         assertTrue(pagina.hasNext());
+    }
+
+    private Event evento(String nombre, LocalDate fecha, Venue venue) {
+        Event event = new Event(null, nombre, fecha, "");
+        event.setVenue(venue);
+        return event;
     }
 }

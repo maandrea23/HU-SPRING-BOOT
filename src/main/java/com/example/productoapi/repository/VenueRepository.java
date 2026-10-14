@@ -7,4 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface VenueRepository extends JpaRepository<Venue, Long> {
     Page<Venue> findByNombreContaining(String nombre, Pageable pageable);
+    Page<Venue> findByCiudadContainingIgnoreCase(String ciudad, Pageable pageable);
 }

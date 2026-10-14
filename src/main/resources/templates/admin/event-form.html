@@ -14,6 +14,18 @@
             <input id="fecha" type="date" th:field="*{fecha}" required>
             <label for="descripcion">Descripción</label>
             <textarea id="descripcion" th:field="*{descripcion}" maxlength="500" rows="4"></textarea>
+            <label for="venueId">Lugar</label>
+            <select id="venueId" name="venueId" required>
+                <option value="">Selecciona un lugar</option>
+                <option th:each="venue : ${lugares}" th:value="${venue.id}" th:text="${venue.nombre + ' · ' + venue.ciudad}">Lugar</option>
+            </select>
+            <fieldset>
+                <legend>Categorías</legend>
+                <label th:each="category : ${categorias}">
+                    <input type="checkbox" name="categoryIds" th:value="${category.id}">
+                    <span th:text="${category.nombre}">Categoría</span>
+                </label>
+            </fieldset>
             <div class="acciones"><button class="boton" type="submit">Guardar evento</button><a class="boton" th:href="@{/admin}">Cancelar</a></div>
         </form>
     </section>

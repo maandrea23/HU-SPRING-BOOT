@@ -14,6 +14,8 @@
             <input id="direccion" type="text" th:field="*{direccion}" required maxlength="200">
             <label for="capacidad">Capacidad</label>
             <input id="capacidad" type="number" th:field="*{capacidad}" required min="1">
+            <label for="ciudad">Ciudad</label>
+            <input id="ciudad" type="text" th:field="*{ciudad}" required maxlength="100">
             <div class="acciones"><button class="boton" type="submit">Guardar lugar</button><a class="boton" th:href="@{/admin}">Cancelar</a></div>
         </form>
     </section>

@@ -28,15 +28,15 @@ class VenueServiceTest {
 
     @Test
     void rechazaCapacidadNoPositiva() {
-        Venue venue = new Venue(null, "Auditorio", "Calle 10", 0);
+        Venue venue = new Venue(null, "Auditorio", "Calle 10", 0, "Bogotá");
         assertThrows(DatosInvalidosException.class, () -> service.registrar(venue));
         verifyNoInteractions(repository);
     }
 
     @Test
     void actualizaLugarExistente() {
-        Venue existente = new Venue(1L, "Auditorio", "Calle 10", 100);
-        Venue cambios = new Venue(null, "Auditorio nuevo", "Calle 20", 150);
+        Venue existente = new Venue(1L, "Auditorio", "Calle 10", 100, "Bogotá");
+        Venue cambios = new Venue(null, "Auditorio nuevo", "Calle 20", 150, "Medellín");
         when(repository.findById(1L)).thenReturn(Optional.of(existente));
         when(repository.save(existente)).thenReturn(existente);
 

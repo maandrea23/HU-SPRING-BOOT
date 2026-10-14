@@ -26,4 +26,6 @@ public class Venue {
     private String direccion;
     @Column(nullable = false)
     private Integer capacidad;
+    @Column(nullable = false, length = 100)
+    private String ciudad;
 }

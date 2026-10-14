@@ -6,6 +6,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
+import com.example.productoapi.model.Venue;
+import com.example.productoapi.repository.VenueRepository;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -20,6 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:admin-view-test;DB_CLOSE_DELAY=-1",
         "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.flyway.enabled=false",
         "eventify.seed.enabled=false"
 })
 @AutoConfigureMockMvc
@@ -27,6 +30,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AdminViewTest {
     @Autowired
     private MockMvc mvc;
+    @Autowired
+    private VenueRepository venueRepository;
 
     @Test
     void panelDevuelveVistaYListasDelModelo() throws Exception {
@@ -51,10 +56,12 @@ class AdminViewTest {
 
     @Test
     void registrarEventoRedirigeAlPanelYMuestraElRegistro() throws Exception {
+        Long venueId = venueRepository.save(new Venue(null, "Auditorio", "Calle 1", 100, "Bogotá")).getId();
         mvc.perform(post("/admin/events")
                         .param("nombre", "Conferencia Eventify")
                         .param("fecha", "2026-11-10")
-                        .param("descripcion", "Panel web"))
+                        .param("descripcion", "Panel web")
+                        .param("venueId", venueId.toString()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin"))
                 .andExpect(flash().attribute("mensajeExito", "Evento registrado correctamente."));

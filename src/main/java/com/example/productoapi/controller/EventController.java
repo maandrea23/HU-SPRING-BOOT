@@ -1,6 +1,7 @@
 package com.example.productoapi.controller;
 
 import com.example.productoapi.model.Event;
+import com.example.productoapi.dto.EventSummaryDTO;
 import com.example.productoapi.service.EventService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -8,10 +9,14 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.format.annotation.DateTimeFormat;
+
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/events")
@@ -24,12 +29,22 @@ public class EventController {
     }
 
     @GetMapping
-    @Operation(summary = "Consultar eventos paginados")
-    @ApiResponse(responseCode = "200", description = "Página de eventos y metadatos")
-    public ResponseEntity<Page<Event>> listar(
-            @RequestParam(required = false) String nombre,
-            @ParameterObject @PageableDefault(size = 10, sort = "nombre") Pageable pageable) {
-        return ResponseEntity.ok(service.listar(nombre, pageable));
+    @Operation(summary = "Consultar catálogo optimizado de eventos",
+            description = "Devuelve un Slice de resúmenes ordenados por fecha descendente. Los eventos desactivados " +
+                    "por borrado lógico no aparecen en ningún resultado.")
+    @ApiResponse(responseCode = "200", description = "Fragmento de EventSummaryDTO y estado de navegación")
+    public ResponseEntity<Slice<EventSummaryDTO>> listar(
+            @io.swagger.v3.oas.annotations.Parameter(description = "Ciudad parcial, sin distinguir mayúsculas")
+            @RequestParam(required = false) String ciudad,
+            @io.swagger.v3.oas.annotations.Parameter(description = "Categoría parcial, sin distinguir mayúsculas")
+            @RequestParam(required = false) String categoria,
+            @io.swagger.v3.oas.annotations.Parameter(description = "Capacidad mínima del lugar")
+            @RequestParam(required = false) Integer capacidadMinima,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @ParameterObject @PageableDefault(size = 10, sort = "fecha", direction = org.springframework.data.domain.Sort.Direction.DESC)
+            Pageable pageable) {
+        return ResponseEntity.ok(service.buscarResumen(ciudad, categoria, capacidadMinima, desde, hasta, pageable));
     }
 
     @PostMapping
@@ -58,8 +73,9 @@ public class EventController {
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Eliminar un evento")
-    @ApiResponse(responseCode = "204", description = "Evento eliminado")
+    @Operation(summary = "Desactivar un evento", description = "Aplica borrado lógico: el evento se conserva para auditoría " +
+            "pero queda excluido automáticamente de consultas posteriores.")
+    @ApiResponse(responseCode = "204", description = "Evento desactivado")
     @ApiResponse(responseCode = "404", description = "Evento no encontrado")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         service.eliminar(id);

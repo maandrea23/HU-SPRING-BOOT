@@ -3,7 +3,10 @@ package com.example.productoapi.service;
 import com.example.productoapi.exception.DatosInvalidosException;
 import com.example.productoapi.exception.RecursoNoEncontradoException;
 import com.example.productoapi.model.Event;
+import com.example.productoapi.model.Venue;
+import com.example.productoapi.repository.CategoryRepository;
 import com.example.productoapi.repository.EventRepository;
+import com.example.productoapi.repository.VenueRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,16 +23,23 @@ import static org.mockito.Mockito.*;
 class EventServiceTest {
     @Mock
     private EventRepository repository;
+    @Mock
+    private VenueRepository venueRepository;
+    @Mock
+    private CategoryRepository categoryRepository;
     private EventService service;
 
     @BeforeEach
     void preparar() {
-        service = new EventService(repository);
+        service = new EventService(repository, venueRepository, categoryRepository);
     }
 
     @Test
     void registraEventoValidoSinConservarElIdDelCliente() {
         Event entrada = new Event(99L, "Taller Java", LocalDate.of(2026, 10, 15), "Primer taller");
+        entrada.setVenue(new Venue());
+        entrada.getVenue().setId(1L);
+        when(venueRepository.findById(1L)).thenReturn(Optional.of(new Venue(1L, "Auditorio", "Calle", 100, "Bogotá")));
         when(repository.save(any(Event.class))).thenAnswer(invocation -> {
             Event evento = invocation.getArgument(0);
             assertNull(evento.getId());
@@ -54,6 +64,9 @@ class EventServiceTest {
     void actualizaUnEventoExistente() {
         Event existente = new Event(1L, "Nombre anterior", LocalDate.of(2026, 1, 1), "A");
         Event cambios = new Event(null, "Nombre nuevo", LocalDate.of(2026, 2, 2), "B");
+        cambios.setVenue(new Venue());
+        cambios.getVenue().setId(1L);
+        when(venueRepository.findById(1L)).thenReturn(Optional.of(new Venue(1L, "Auditorio", "Calle", 100, "Bogotá")));
         when(repository.findById(1L)).thenReturn(Optional.of(existente));
         when(repository.save(existente)).thenReturn(existente);
 
@@ -77,6 +90,7 @@ class EventServiceTest {
 
         service.eliminar(3L);
 
-        verify(repository).delete(existente);
+        verify(repository).save(existente);
+        assertFalse(existente.getActive());
     }
 }

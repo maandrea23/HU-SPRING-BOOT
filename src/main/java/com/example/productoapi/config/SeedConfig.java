@@ -25,12 +25,18 @@ public class SeedConfig {
     public CommandLineRunner cargarDatosIniciales() {
         // Spring ejecuta este Bean una vez al iniciar la aplicación.
         return args -> {
+            Venue venueInicial;
             if (venueService.listar(null, org.springframework.data.domain.Pageable.unpaged()).isEmpty()) {
-                venueService.registrar(new Venue(null, "Auditorio Central", "Calle 10 # 20-30", 200));
+                venueInicial = venueService.registrar(new Venue(null, "Auditorio Central", "Calle 10 # 20-30", 200,
+                        "Bogotá"));
+            } else {
+                venueInicial = venueService.listar(null, org.springframework.data.domain.Pageable.unpaged()).getContent().getFirst();
             }
             if (eventService.listar(null, org.springframework.data.domain.Pageable.unpaged()).isEmpty()) {
-                eventService.registrar(new Event(null, "Introducción a Spring Boot",
-                        LocalDate.of(2026, 10, 15), "Encuentro para aprender a crear una API"));
+                Event evento = new Event(null, "Introducción a Spring Boot", LocalDate.of(2026, 10, 15),
+                        "Encuentro para aprender a crear una API");
+                evento.setVenue(venueInicial);
+                eventService.registrar(evento);
             }
         };
     }

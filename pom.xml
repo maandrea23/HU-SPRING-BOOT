@@ -51,6 +51,10 @@
             <artifactId>h2</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
         <!-- Genera getters, setters y constructores de los modelos. -->
         <dependency>
             <groupId>org.projectlombok</groupId>

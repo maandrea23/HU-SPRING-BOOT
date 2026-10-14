@@ -8,15 +8,15 @@ import org.springframework.data.domain.PageRequest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@DataJpaTest
+@DataJpaTest(properties = {"spring.flyway.enabled=false", "spring.jpa.hibernate.ddl-auto=create-drop"})
 class VenueRepositoryTest {
     @Autowired
     private VenueRepository repository;
 
     @Test
     void guardaYBuscaPorParteDelNombre() {
-        repository.save(new Venue(null, "Auditorio Central", "Calle 10", 200));
-        repository.save(new Venue(null, "Teatro", "Carrera 7", 500));
+        repository.save(new Venue(null, "Auditorio Central", "Calle 10", 200, "Bogotá"));
+        repository.save(new Venue(null, "Teatro", "Carrera 7", 500, "Medellín"));
 
         var pagina = repository.findByNombreContaining("Auditorio", PageRequest.of(0, 5));
 

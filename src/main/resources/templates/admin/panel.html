@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Eventify · Panel administrativo')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+<main>
+    <h1>Panel administrativo</h1>
+    <p>Gestiona eventos y lugares desde un solo sitio.</p>
+    <p class="alerta exito" th:if="${mensajeExito}" th:text="${mensajeExito}"></p>
+
+    <section class="tarjeta">
+        <h2>Eventos programados</h2>
+        <a class="boton" th:href="@{/admin/events/nuevo}">Registrar evento</a>
+        <p class="vacio" th:if="${#lists.isEmpty(eventos)}">Actualmente no hay eventos programados</p>
+        <table th:unless="${#lists.isEmpty(eventos)}">
+            <thead><tr><th>Nombre</th><th>Fecha</th><th>Descripción</th></tr></thead>
+            <tbody>
+            <tr th:each="event : ${eventos}">
+                <td th:text="${event.nombre}">Nombre</td>
+                <td th:text="${event.fecha}">Fecha</td>
+                <td th:text="${event.descripcion}">Descripción</td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section class="tarjeta">
+        <h2>Lugares registrados</h2>
+        <a class="boton" th:href="@{/admin/venues/nuevo}">Registrar lugar</a>
+        <p class="vacio" th:if="${#lists.isEmpty(lugares)}">Actualmente no hay lugares registrados</p>
+        <table th:unless="${#lists.isEmpty(lugares)}">
+            <thead><tr><th>Nombre</th><th>Dirección</th><th>Capacidad</th></tr></thead>
+            <tbody>
+            <tr th:each="venue : ${lugares}">
+                <td th:text="${venue.nombre}">Nombre</td>
+                <td th:text="${venue.direccion}">Dirección</td>
+                <td th:text="${venue.capacidad}">Capacidad</td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+</main>
+</body>
+</html>

@@ -55,8 +55,8 @@ class CatalogoHttpTest {
     }
 
     @Test
-    void paginaEventosYPermiteBuscarPorNombre() throws Exception {
-        for (int i = 1; i <= 6; i++) {
+    void paginaCincuentaEventosConOrdenamiento() throws Exception {
+        for (int i = 1; i <= 50; i++) {
             mvc.perform(post("/api/events").contentType("application/json").content("""
                     {"nombre":"Curso %d","fecha":"2026-10-15","descripcion":""}
                     """.formatted(i))).andExpect(status().isCreated());
@@ -64,11 +64,11 @@ class CatalogoHttpTest {
         mvc.perform(get("/api/events?page=0&size=5&sort=nombre,asc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content.length()").value(5))
-                .andExpect(jsonPath("$.totalElements").value(6))
-                .andExpect(jsonPath("$.totalPages").value(2));
-        mvc.perform(get("/api/events").param("nombre", "Curso 1").param("page", "0").param("size", "10"))
+                .andExpect(jsonPath("$.totalElements").value(50))
+                .andExpect(jsonPath("$.totalPages").value(10));
+        mvc.perform(get("/api/events").param("nombre", "Curso 1").param("page", "0").param("size", "20"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(1));
+                .andExpect(jsonPath("$.totalElements").value(11));
     }
 
     @Test
@@ -77,6 +77,14 @@ class CatalogoHttpTest {
                 {"nombre":"","fecha":"2026-10-15"}
                 """))
                 .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/events/9999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.mensaje").value("No existe el evento con id 9999"));
+        mvc.perform(put("/api/events/9999").contentType("application/json").content("""
+                {"nombre":"Evento actualizado","fecha":"2026-10-15"}
+                """))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.mensaje").value("No existe el evento con id 9999"));
         mvc.perform(delete("/api/events/9999"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.mensaje").value("No existe el evento con id 9999"));
@@ -98,6 +106,8 @@ class CatalogoHttpTest {
         mvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/api/events'].get.parameters").isArray())
+                .andExpect(jsonPath("$.paths['/api/events'].get.responses['200']").exists())
+                .andExpect(jsonPath("$.paths['/api/events'].post.responses['201']").exists())
                 .andExpect(jsonPath("$.paths['/api/events/{id}'].delete.responses['204']").exists())
                 .andExpect(jsonPath("$.paths['/api/events/{id}'].get.responses['404']").exists());
     }

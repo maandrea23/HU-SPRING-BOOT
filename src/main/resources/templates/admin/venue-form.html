@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Registrar lugar · Eventify')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+<main>
+    <section class="tarjeta">
+        <h1>Registrar lugar</h1>
+        <p class="alerta error" th:if="${mensajeError}" th:text="${mensajeError}"></p>
+        <form th:action="@{/admin/venues}" th:object="${venue}" method="post">
+            <label for="nombre">Nombre</label>
+            <input id="nombre" type="text" th:field="*{nombre}" required maxlength="100">
+            <label for="direccion">Dirección</label>
+            <input id="direccion" type="text" th:field="*{direccion}" required maxlength="200">
+            <label for="capacidad">Capacidad</label>
+            <input id="capacidad" type="number" th:field="*{capacidad}" required min="1">
+            <div class="acciones"><button class="boton" type="submit">Guardar lugar</button><a class="boton" th:href="@{/admin}">Cancelar</a></div>
+        </form>
+    </section>
+</main>
+</body>
+</html>

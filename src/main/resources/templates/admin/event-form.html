@@ -6,23 +6,26 @@
 <main>
     <section class="tarjeta">
         <h1>Registrar evento</h1>
-        <p class="alerta error" th:if="${mensajeError}" th:text="${mensajeError}"></p>
         <form th:action="@{/admin/events}" th:object="${event}" method="post">
             <label for="nombre">Nombre</label>
-            <input id="nombre" type="text" th:field="*{nombre}" required maxlength="100">
+            <input id="nombre" type="text" th:field="*{nombre}" th:errorclass="campo-invalido" required maxlength="100">
+            <small class="error-texto" th:errors="*{nombre}"></small>
             <label for="fecha">Fecha</label>
-            <input id="fecha" type="date" th:field="*{fecha}" required>
+            <input id="fecha" type="date" th:field="*{fecha}" th:errorclass="campo-invalido" required>
+            <small class="error-texto" th:errors="*{fecha}"></small>
             <label for="descripcion">Descripción</label>
-            <textarea id="descripcion" th:field="*{descripcion}" maxlength="500" rows="4"></textarea>
+            <textarea id="descripcion" th:field="*{descripcion}" th:errorclass="campo-invalido" maxlength="500" rows="4"></textarea>
+            <small class="error-texto" th:errors="*{descripcion}"></small>
             <label for="venueId">Lugar</label>
-            <select id="venueId" name="venueId" required>
+            <select id="venueId" th:field="*{venueId}" th:errorclass="campo-invalido" required>
                 <option value="">Selecciona un lugar</option>
                 <option th:each="venue : ${lugares}" th:value="${venue.id}" th:text="${venue.nombre + ' · ' + venue.ciudad}">Lugar</option>
             </select>
+            <small class="error-texto" th:errors="*{venueId}"></small>
             <fieldset>
                 <legend>Categorías</legend>
                 <label th:each="category : ${categorias}">
-                    <input type="checkbox" name="categoryIds" th:value="${category.id}">
+                    <input type="checkbox" th:field="*{categoryIds}" th:value="${category.id}">
                     <span th:text="${category.nombre}">Categoría</span>
                 </label>
             </fieldset>

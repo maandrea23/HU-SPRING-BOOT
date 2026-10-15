@@ -1,9 +1,8 @@
 package com.example.productoapi.controller;
 
-import com.example.productoapi.exception.DatosInvalidosException;
-import com.example.productoapi.model.Event;
-import com.example.productoapi.model.Venue;
-import com.example.productoapi.model.Category;
+import com.example.productoapi.dto.EventCreateDTO;
+import com.example.productoapi.dto.VenueCreateDTO;
+import com.example.productoapi.validation.CreateValidation;
 import com.example.productoapi.service.CategoryService;
 import com.example.productoapi.service.EventService;
 import com.example.productoapi.service.VenueService;
@@ -16,10 +15,11 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.annotation.Validated;
 
 import java.time.LocalDate;
-import java.util.LinkedHashSet;
-import java.util.List;
+import java.util.Set;
 
 @Controller
 @RequestMapping("/admin")
@@ -62,47 +62,48 @@ public class AdminController {
 
     @GetMapping("/events/nuevo")
     public String nuevoEvento(Model model) {
-        model.addAttribute("event", new Event());
+        model.addAttribute("event", new EventCreateDTO(null, null, null, null, Set.of(), null));
         cargarOpcionesFormulario(model);
         return "admin/event-form";
     }
 
     @PostMapping("/events")
-    public String registrarEvento(@ModelAttribute("event") Event event,
-                                  @RequestParam Long venueId,
-                                  @RequestParam(required = false) List<Long> categoryIds,
+    public String registrarEvento(@Validated(CreateValidation.class) @ModelAttribute("event") EventCreateDTO event,
+                                  BindingResult bindingResult,
+                                  Model model,
                                   RedirectAttributes redirectAttributes) {
+        if (bindingResult.hasErrors()) {
+            cargarOpcionesFormulario(model);
+            return "admin/event-form";
+        }
         try {
-            event.setVenue(new Venue());
-            event.getVenue().setId(venueId);
-            event.setCategorias(new LinkedHashSet<>());
-            if (categoryIds != null) {
-                categoryIds.forEach(id -> event.getCategorias().add(new Category(id, null, null)));
-            }
             eventService.registrar(event);
             redirectAttributes.addFlashAttribute("mensajeExito", "Evento registrado correctamente.");
             return "redirect:/admin";
-        } catch (DatosInvalidosException exception) {
-            redirectAttributes.addFlashAttribute("mensajeError", exception.getMessage());
-            return "redirect:/admin/events/nuevo";
+        } catch (RuntimeException exception) {
+            bindingResult.reject("event", exception.getMessage());
+            cargarOpcionesFormulario(model);
+            return "admin/event-form";
         }
     }
 
     @GetMapping("/venues/nuevo")
     public String nuevoLugar(Model model) {
-        model.addAttribute("venue", new Venue());
+        model.addAttribute("venue", new VenueCreateDTO(null, null, null, null));
         return "admin/venue-form";
     }
 
     @PostMapping("/venues")
-    public String registrarLugar(@ModelAttribute("venue") Venue venue, RedirectAttributes redirectAttributes) {
+    public String registrarLugar(@Validated(CreateValidation.class) @ModelAttribute("venue") VenueCreateDTO venue,
+                                 BindingResult bindingResult, RedirectAttributes redirectAttributes) {
+        if (bindingResult.hasErrors()) return "admin/venue-form";
         try {
             venueService.registrar(venue);
             redirectAttributes.addFlashAttribute("mensajeExito", "Lugar registrado correctamente.");
             return "redirect:/admin";
-        } catch (DatosInvalidosException exception) {
-            redirectAttributes.addFlashAttribute("mensajeError", exception.getMessage());
-            return "redirect:/admin/venues/nuevo";
+        } catch (RuntimeException exception) {
+            bindingResult.reject("venue", exception.getMessage());
+            return "admin/venue-form";
         }
     }
 

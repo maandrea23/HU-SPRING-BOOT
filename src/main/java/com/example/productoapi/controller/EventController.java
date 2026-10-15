@@ -1,6 +1,9 @@
 package com.example.productoapi.controller;
 
-import com.example.productoapi.model.Event;
+import com.example.productoapi.dto.EventCreateDTO;
+import com.example.productoapi.dto.EventResponseDTO;
+import com.example.productoapi.validation.CreateValidation;
+import com.example.productoapi.validation.UpdateValidation;
 import com.example.productoapi.dto.EventSummaryDTO;
 import com.example.productoapi.service.EventService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,10 +16,13 @@ import org.springframework.data.domain.Slice;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
+import org.springframework.validation.annotation.Validated;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/events")
@@ -50,17 +56,19 @@ public class EventController {
     @PostMapping
     @Operation(summary = "Registrar evento")
     @ApiResponse(responseCode = "201", description = "Registro creado")
-    @ApiResponse(responseCode = "400", description = "Datos inválidos")
-    public ResponseEntity<Event> registrar(@RequestBody Event event) {
+    @ApiResponse(responseCode = "400", description = "Datos inválidos", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ProblemDetail.class)))
+    @ApiResponse(responseCode = "409", description = "Regla de negocio incumplida", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ProblemDetail.class)))
+    @ApiResponse(responseCode = "500", description = "Error inesperado", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ProblemDetail.class)))
+    public ResponseEntity<EventResponseDTO> registrar(@Valid @Validated(CreateValidation.class) @RequestBody EventCreateDTO event) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.registrar(event));
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Consultar un evento por id")
     @ApiResponse(responseCode = "200", description = "Evento encontrado")
-    @ApiResponse(responseCode = "404", description = "Evento no encontrado")
-    public ResponseEntity<Event> buscarPorId(@PathVariable Long id) {
-        return ResponseEntity.ok(service.buscarPorId(id));
+    @ApiResponse(responseCode = "404", description = "Evento no encontrado", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ProblemDetail.class)))
+    public ResponseEntity<EventResponseDTO> buscarPorId(@PathVariable Long id) {
+        return ResponseEntity.ok(service.buscarRespuestaPorId(id));
     }
 
     @PutMapping("/{id}")
@@ -68,7 +76,10 @@ public class EventController {
     @ApiResponse(responseCode = "200", description = "Evento actualizado")
     @ApiResponse(responseCode = "400", description = "Datos inválidos")
     @ApiResponse(responseCode = "404", description = "Evento no encontrado")
-    public ResponseEntity<Event> actualizar(@PathVariable Long id, @RequestBody Event event) {
+    @ApiResponse(responseCode = "409", description = "Regla de negocio incumplida")
+    @ApiResponse(responseCode = "500", description = "Error inesperado")
+    public ResponseEntity<EventResponseDTO> actualizar(@PathVariable Long id,
+            @Valid @Validated(UpdateValidation.class) @RequestBody EventCreateDTO event) {
         return ResponseEntity.ok(service.actualizar(id, event));
     }
 
@@ -77,6 +88,7 @@ public class EventController {
             "pero queda excluido automáticamente de consultas posteriores.")
     @ApiResponse(responseCode = "204", description = "Evento desactivado")
     @ApiResponse(responseCode = "404", description = "Evento no encontrado")
+    @ApiResponse(responseCode = "500", description = "Error inesperado")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         service.eliminar(id);
         return ResponseEntity.noContent().build();
